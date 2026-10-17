@@ -1,26 +1,7 @@
 # ==============================================================================
-# Multi-stage Dockerfile for GhostHub Media Server
+# Production Dockerfile for GhostHub Media Server
 # ==============================================================================
-
-# ---- Stage 1: Build Dependencies ----
-FROM python:3.9-slim AS builder
-
-WORKDIR /build
-
-# Install minimal build tools needed for wheels if compilation is required
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libudev-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-
-# Install dependencies into /install prefix
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir --prefix=/install -r requirements.txt packaging
-
-# ---- Stage 2: Final Production Runtime ----
-FROM python:3.9-slim AS runner
+FROM python:3.9-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -30,25 +11,30 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install runtime dependencies:
-# - ffmpeg: audio/video streaming, thumbnail generation and subtitle extraction
-# - curl: healthcheck endpoint polling
-# - gosu: safe privilege de-escalation for custom PUID/PGID
-# - libudev1: hardware and storage device hotplug monitoring
+# 1. Install runtime and build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     gosu \
     libudev1 \
+    build-essential \
+    libudev-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed Python packages from builder stage
-COPY --from=builder /install /usr/local
+# 2. Install Python dependencies directly into the system environment
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r requirements.txt packaging \
+    && apt-get purge -y --auto-remove build-essential libudev-dev \
+    && rm -rf /var/lib/apt/lists/* /root/.cache
 
-# Copy application source code
+# 3. Copy application source code
 COPY . /app
 
-# Ensure entrypoint is executable and default directories exist
+# 4. Verify critical Gunicorn + GeventWebSocketWorker imports during build
+RUN python -c "import packaging; import gunicorn.workers.ggevent; import geventwebsocket.gunicorn.workers; print('>>> Build verification PASSED: Gunicorn and GeventWebSocketWorker loaded successfully!')"
+
+# 5. Ensure entrypoint is executable and default directories exist
 RUN chmod +x /app/docker-entrypoint.sh \
     && mkdir -p /app/instance /media /tmp/ghosthub_sqlite
 
