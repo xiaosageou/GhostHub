@@ -387,17 +387,29 @@ def filter_hidden_only_drives(drives: List[Dict]) -> List[Dict]:
     return visible_drives
 
 
+def _is_docker_env() -> bool:
+    """Return True when running inside a containerized environment (Docker/Podman)."""
+    return (
+        os.path.exists('/.dockerenv')
+        or os.environ.get('GHOSTHUB_DOCKER', '').lower() in ('true', '1', 'yes')
+        or os.environ.get('container') == 'docker'
+    )
+
+
 def _get_linux_drives(include_hidden_only: bool = True) -> List[Dict]:
     drives = []
     seen_paths = set()
+    is_docker = _is_docker_env()
 
     usb_device_info = _get_usb_device_info()
 
     ghosthub_roots = ['/media/ghost', '/media/usb']
     general_roots = ['/media', '/mnt']
 
-    def add_drive_if_valid(path, name):
-        if path in seen_paths or _is_hidden_path(path):
+    def add_drive_if_valid(path, name, allow_hidden_root: bool = False):
+        if path in seen_paths:
+            return False
+        if not allow_hidden_root and _is_hidden_path(path):
             return False
 
         dev_info = usb_device_info.get(path, {})
@@ -414,6 +426,14 @@ def _get_linux_drives(include_hidden_only: bool = True) -> List[Dict]:
             return True
         return False
 
+    # Check optional custom media directories defined via environment variable
+    custom_dirs = os.environ.get('GHOSTHUB_MEDIA_DIRS', '')
+    if custom_dirs:
+        for cdir in [d.strip() for d in custom_dirs.split(',') if d.strip()]:
+            if os.path.isdir(cdir):
+                cname = os.path.basename(os.path.normpath(cdir)) or cdir
+                add_drive_if_valid(cdir, cname, allow_hidden_root=True)
+
     for root in ghosthub_roots:
         if not os.path.exists(root):
             continue
@@ -427,7 +447,7 @@ def _get_linux_drives(include_hidden_only: bool = True) -> List[Dict]:
                     if entry.is_dir() and not entry.name.startswith('.'):
                         try:
                             entry_dev = os.stat(entry.path).st_dev
-                            if entry_dev == parent_dev:
+                            if not is_docker and entry_dev == parent_dev:
                                 logger.debug("Skipping unmounted folder: %s", entry.path)
                                 continue
                         except Exception:
@@ -444,18 +464,26 @@ def _get_linux_drives(include_hidden_only: bool = True) -> List[Dict]:
                 for entry in entries:
                     if not entry.is_dir() or entry.name.startswith('.'):
                         continue
-                    if os.ismount(entry.path):
+                    if os.ismount(entry.path) or is_docker:
                         add_drive_if_valid(entry.path, entry.name)
                     if entry.name in ['pi', 'ghost'] or entry.path in ghosthub_roots:
                         try:
                             with os.scandir(entry.path) as sub_entries:
                                 for sub in sub_entries:
-                                    if sub.is_dir() and not sub.name.startswith('.') and os.ismount(sub.path):
+                                    if sub.is_dir() and not sub.name.startswith('.') and (os.ismount(sub.path) or is_docker):
                                         add_drive_if_valid(sub.path, sub.name)
                         except Exception:
                             pass
         except Exception as exc:
             logger.debug("Error scanning general root %s: %s", root, exc)
+
+    # In Docker environments, if no sub-drives were discovered and /media exists and contains files/folders,
+    # treat /media itself as a default media storage drive
+    if is_docker and not drives and os.path.isdir('/media'):
+        try:
+            add_drive_if_valid('/media', 'Media', allow_hidden_root=True)
+        except Exception as exc:
+            logger.debug("Could not add /media as default Docker drive: %s", exc)
 
     return drives
 

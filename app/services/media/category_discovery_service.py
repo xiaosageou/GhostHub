@@ -283,6 +283,12 @@ def resolve_auto_category(category_id):
 
 def _get_category_scan_roots():
     usb_roots = ["/media", "/media/usb", "/media/ghost", "/mnt"]
+    custom_dirs = os.environ.get('GHOSTHUB_MEDIA_DIRS', '')
+    if custom_dirs:
+        for cdir in [d.strip() for d in custom_dirs.split(',') if d.strip()]:
+            if cdir not in usb_roots:
+                usb_roots.append(cdir)
+
     active_roots = sorted(
         [root for root in usb_roots if os.path.exists(root)],
         key=len,
@@ -312,6 +318,12 @@ def _get_auto_category_lookup_roots():
     for root in ["/media", "/media/usb", "/media/ghost", "/mnt"]:
         if root not in usb_roots:
             usb_roots.append(root)
+
+    custom_dirs = os.environ.get('GHOSTHUB_MEDIA_DIRS', '')
+    if custom_dirs:
+        for cdir in [d.strip() for d in custom_dirs.split(',') if d.strip()]:
+            if cdir not in usb_roots:
+                usb_roots.append(cdir)
 
     local_media = os.path.abspath(os.path.join(get_runtime_root_path(), "..", "media"))
     if local_media not in usb_roots:

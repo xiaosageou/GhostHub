@@ -1,0 +1,71 @@
+# Git and IDE
+.git
+.github
+.gitignore
+.gitattributes
+.vscode
+.idea
+.cursor
+.claude
+
+# Python build artifacts and caches
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+tests/
+stress_tests/
+test_temp_py/
+pytestdebug.log
+
+# Node & Frontend dependencies
+node_modules/
+static/js/node_modules/
+vitest/
+
+# Runtime and local instance data
+instance/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Documentation and screenshots
+docs/
+*.PNG
+*.png
+!static/icons/*.png
+!static/**/*.png
+*.sh
+!docker-entrypoint.sh

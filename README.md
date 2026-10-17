@@ -133,6 +133,35 @@ If you cloned this repo and want to deploy your working tree to a Pi instead of 
 
 The deploy CLI builds a local `ghostpack` ZIP, uploads it to the Pi, and does not use GitHub Releases.
 
+### Option 4 — Deploy with Docker (Compose & Container)
+
+GhostHub can be deployed quickly on any x86_64 or ARM64 Linux system, NAS, or home server via Docker:
+
+```bash
+# Clone the repository
+git clone https://github.com/xiaosageou/GhostHub.git
+cd GhostHub
+
+# Start using Docker Compose (automatically builds or pulls image)
+docker compose up -d
+```
+
+Or run directly with `docker run`:
+
+```bash
+docker run -d \
+  --name ghosthub \
+  --restart unless-stopped \
+  -p 5000:5000 \
+  -v $(pwd)/data:/app/instance \
+  -v /path/to/your/media:/media \
+  -e PORT=5000 \
+  -e FLASK_CONFIG=production \
+  ghcr.io/xiaosageou/ghosthub:latest
+```
+
+Open `http://<your-ip>:5000` in your browser. All media placed in the `/media` mount will be indexed automatically.
+
 See [Quick Start](docs/QUICK_START.md), [Flash Image](docs/FLASH_GHOSTHUB_IMAGE.md), or [DIY Install](docs/DIY_INSTALL.md) for detailed setup instructions.
 
 ## How It Runs

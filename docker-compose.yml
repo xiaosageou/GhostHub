@@ -1,0 +1,34 @@
+services:
+  ghosthub:
+    # Build locally or use the prebuilt image from GitHub Actions
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/xiaosageou/ghosthub:latest
+    container_name: ghosthub
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - FLASK_CONFIG=production
+      - TZ=Asia/Shanghai
+      # Optional: set user/group ID if needed for file permissions (e.g. on Synology/Unraid)
+      # - PUID=1000
+      # - PGID=1000
+      # Optional: configure additional custom media directories separated by commas
+      # - GHOSTHUB_MEDIA_DIRS=/media,/mnt/disk2
+    volumes:
+      # Persistent application data (sqlite database, configs, sessions)
+      - ./data:/app/instance
+      # Media library directory (photos, movies, music, etc.)
+      # You can mount your host media folders here
+      - ./media:/media
+      # You can also mount additional drives/folders:
+      # - /path/to/external/disk:/media/external_disk
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
