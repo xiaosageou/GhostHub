@@ -11,6 +11,7 @@ gevent==25.5.1
 gevent-websocket==0.10.1 # Required for Gunicorn SocketIO worker
 websocket-client>=1.6.0  # Required for TV runtime Socket.IO client (WebSocket transport)
 gunicorn==22.0.0         # Production WSGI server for Linux/macOS
+packaging>=20.0          # Required by gunicorn gevent worker
 dnspython==2.3.0
 
 # Media Processing

@@ -17,7 +17,7 @@ COPY requirements.txt .
 
 # Install dependencies into /install prefix
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir --prefix=/install -r requirements.txt
+    && pip install --no-cache-dir --prefix=/install -r requirements.txt packaging
 
 # ---- Stage 2: Final Production Runtime ----
 FROM python:3.9-slim AS runner
