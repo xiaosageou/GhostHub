@@ -3,21 +3,14 @@
 # ==============================================================================
 
 # ---- Stage 1: Build Dependencies ----
-FROM python:3.9-slim-bullseye AS builder
+FROM python:3.9-slim AS builder
 
 WORKDIR /build
 
-# Install build dependencies for C-extensions (gevent, psutil, pyudev, etc.)
+# Install minimal build tools needed for wheels if compilation is required
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    gcc \
-    g++ \
-    make \
-    python3-dev \
     libudev-dev \
-    libjpeg-dev \
-    zlib1g-dev \
-    libfreetype6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -27,7 +20,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # ---- Stage 2: Final Production Runtime ----
-FROM python:3.9-slim-bullseye AS runner
+FROM python:3.9-slim AS runner
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -37,22 +30,19 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install runtime dependencies (ffmpeg for media extraction/conversion, curl for health checks, gosu)
+# Install runtime dependencies:
+# - ffmpeg: audio/video streaming, thumbnail generation and subtitle extraction
+# - curl: healthcheck endpoint polling
+# - gosu: safe privilege de-escalation for custom PUID/PGID
+# - libudev1: hardware and storage device hotplug monitoring
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     gosu \
     libudev1 \
-    libjpeg62-turbo \
-    zlib1g \
-    libfreetype6 \
-    liblcms2-2 \
-    libopenjp2-7 \
-    libtiff5 \
-    libwebp6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed Python packages from builder
+# Copy installed Python packages from builder stage
 COPY --from=builder /install /usr/local
 
 # Copy application source code
